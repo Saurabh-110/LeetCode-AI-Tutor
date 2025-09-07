@@ -1,85 +1,115 @@
-How to Run the LeetCode AI Tutor Project
-This guide provides the full instructions to set up and run both the backend Flask server and the frontend Chrome extension.
+<div align="center"><b>LeetCode AI Tutor - Chrome Extension</b></div>
+<p align="center">
+
+
+An intelligent Chrome extension that acts as a personal AI tutor for users practicing on LeetCode. It proactively offers conceptual hints after a set time, provides a fully interactive chat UI for follow-up questions, and helps users develop problem-solving skills without giving away the solution.
+
+✨ Features
+💡 Proactive Assistance: A timer starts when you begin coding and offers help if you seem stuck.
+
+⏱️ Configurable Timer: Easily set the help interval (1 to 30 minutes) from the extension's settings.
+
+🎨 Non-Intrusive UI: The hint modal slides in from the top-right and does not block interaction with the LeetCode page.
+
+🧠 Conceptual Hints: The AI is specifically prompted to act as a tutor, providing high-level guidance rather than ready-made code.
+
+💬 Interactive Chat: Ask follow-up questions in a persistent chat interface to dive deeper into the problem.
+
+💾 Persistent Settings: Your preferences are saved locally and persist across browser sessions using the chrome.storage API.
+
+🔒 Secure by Design: API keys are loaded securely from a backend .env file and are never exposed on the frontend.
+
+🛠️ Tech Stack & Architecture
+This project uses a decoupled architecture with a lightweight frontend and a separate backend server to handle the AI logic securely.
+
+Frontend (Chrome Extension):
+
+HTML5, CSS3, JavaScript (ES6+)
+
+Chrome Extension Manifest V3
+
+Backend (AI Server):
+
+Python 3 & Flask
+
+Google Gemini API (gemini-1.5-flash-latest)
+
+<details>
+<summary><b>Click to see the Architecture Diagram and Data Flow</b></summary>
+
+The communication flow is designed to be secure and efficient, following Chrome's Manifest V3 best practices:
+
+UI & Timer (content.js): The content script, injected into the LeetCode page, monitors user activity and manages the timer and the UI modal.
+
+Message Passing (content.js -> background.js): When a hint is requested, the content script sends a message with the problem data to the background service worker.
+
+Secure API Call (background.js -> Flask Server): The service worker makes a fetch request to the local Flask server. It is the only part of the extension that communicates with the backend.
+
+AI Processing (Flask Server -> Gemini API): The Flask server receives the request, constructs a detailed prompt, and securely calls the Google Gemini API.
+
+Response Relay: The response is passed back through the same chain: Gemini -> Flask -> Background Script -> Content Script, where it is finally displayed to the user.
+
+</details>
+
+🚀 Getting Started
+<details>
+<summary><b>Click to see the setup and installation instructions</b></summary>
 
 Prerequisites
-Before you begin, make sure you have the following installed:
+Google Chrome
 
-Python 3.x and pip (the Python package installer).
+Python 3.8+ and pip
 
-Google Chrome.
+Git
 
-A Google Gemini API Key. You can get one from Google AI Studio.
+A valid Google Gemini API Key. You can get one from Google AI Studio.
 
-Part 1: Running the Backend Server
-The backend is a Python Flask server that handles the AI logic.
+1. Backend Setup
+First, set up the Python server that will power the AI.
 
-Navigate to the Backend Directory:
-Open your terminal or command prompt and change into the backend directory.
+# 1. Clone your repository
+git clone <your-repo-url>
+cd your-project-folder/backend
 
-cd path/to/your/project/backend
-
-Create and Activate a Virtual Environment (Recommended):
-This isolates the project's dependencies.
-
-On macOS/Linux:
-
+# 2. Create and activate a virtual environment
+# On macOS/Linux:
 python3 -m venv venv
 source venv/bin/activate
-
-On Windows:
-
+# On Windows:
 python -m venv venv
-.\venv\Scripts\activate
+.\\venv\\Scripts\\activate
 
-Your terminal prompt should now be prefixed with (venv).
-
-Install Required Python Packages:
-Run the following command to install all the necessary packages from the requirements.txt file.
-
+# 3. Install the required Python packages
 pip install -r requirements.txt
 
-Add Your API Key:
-Open the .env file inside the backend directory. Replace YOUR_API_KEY_HERE with your actual Google Gemini API key.
+# 4. Create the environment file
+# Create a new file named .env in the 'backend' directory
+# and add your Gemini API key to it:
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
 
-GEMINI_API_KEY="AIz...your...actual...key"
+# 5. Run the Flask server
+flask run
 
-Start the Server:
-Run the app.py script.
+Your backend is now running at http://127.0.0.1:5000. Keep this terminal window open.
 
-python app.py
+2. Frontend Setup
+Next, load the Chrome extension into your browser.
 
-Verify the Server is Running:
-You should see output in your terminal indicating the server is running, similar to this:
+Open Google Chrome and navigate to chrome://extensions.
 
- * Serving Flask app 'app'
- * Running on [http://127.0.0.1:5000](http://127.0.0.1:5000)
-Press CTRL+C to quit
+Enable "Developer mode" using the toggle switch in the top-right corner.
 
-Keep this terminal window open. The server must be running for the extension to work.
+Click the "Load unpacked" button.
 
-Part 2: Loading the Frontend Chrome Extension
-Now, you will load the unpacked extension into Google Chrome.
+Select the frontend folder from your project directory.
 
-Open Chrome Extensions Page:
-Open Google Chrome and navigate to chrome://extensions in the address bar.
+The LeetCode AI Tutor extension should now appear in your list of extensions!
 
-Enable Developer Mode:
-In the top-right corner of the Extensions page, find the "Developer mode" toggle and turn it ON.
+3. Usage
+Navigate to any LeetCode problem page (e.g., https://leetcode.com/problems/two-sum/).
 
-Load the Extension:
-Once Developer mode is on, a new menu with a button named "Load unpacked" will appear on the left. Click it.
+Start typing in the code editor. The timer will begin automatically.
 
-Select the frontend Directory:
-A file dialog will open. Navigate to your project folder and select the entire frontend directory. Do not select individual files. Click "Select Folder".
+After your configured time, the help modal will appear.
 
-Verify the Extension is Loaded:
-The "LeetCode AI Tutor" extension should now appear in your list of extensions. It's helpful to click the puzzle piece icon in your Chrome toolbar and "pin" the extension for easy access to the settings popup.
-
-Part 3: How to Use
-Navigate to any problem page on LeetCode (e.g., https://leetcode.com/problems/two-sum/).
-
-Click inside the code editor and start typing.
-
-The timer will begin. After the configured duration (default is 5 minutes, but it's set to 30 seconds initially in content.js for easy testing), the "Are you stuck?" modal will slide in from the top right.
-
-Interact with the modal to get your first hint and start a conversation with your AI Tutor!
+</details>
