@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode AI Tutor Settings</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Tutor Settings</h1>
+        </div>
+
+        <div class="setting-item">
+            <label for="enable-toggle" class="setting-label">Enable Extension</label>
+            <label class="switch">
+                <input type="checkbox" id="enable-toggle">
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+        <div class="setting-item">
+            <label for="timer-select" class="setting-label">Help Prompt Timer</label>
+            <select id="timer-select">
+                <option value="1">1 Minute</option>
+                <option value="3">3 Minutes</option>
+                <option value="5">5 Minutes</option>
+                <option value="10">10 Minutes</option>
+                <option value="15">15 Minutes</option>
+                <option value="20">20 Minutes</option>
+                <option value="30">30 Minutes</option>
+            </select>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>
