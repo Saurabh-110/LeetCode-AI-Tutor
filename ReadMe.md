@@ -67,8 +67,8 @@ A valid Google Gemini API Key. You can get one from Google AI Studio.
 1. Backend Setup
 First, set up the Python server that will power the AI.
 
-# 1. Clone your repository
-git clone <your-repo-url>
+# 1. Clone the repository
+git clone <https://github.com/Saurabh-110/LeetCode-AI-Tutor>
 cd your-project-folder/backend
 
 # 2. Create and activate a virtual environment
