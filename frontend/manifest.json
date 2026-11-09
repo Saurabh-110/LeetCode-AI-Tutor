@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "LeetCode AI Tutor",
-  "version": "1.0",
-  "description": "An intelligent tutor that provides conceptual hints for LeetCode problems.",
-  "permissions": [
-    "storage"
-  ],
+  "version": "2.0.0",
+  "description": "A hint-first AI tutor for LeetCode: progressive hints, debugging help, and a smart reminder timer.",
+  "minimum_chrome_version": "111",
+  "permissions": ["storage"],
   "host_permissions": [
-    "https://leetcode.com/problems/*"
+    "https://leetcode.com/problems/*",
+    "http://127.0.0.1:5000/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -28,9 +28,18 @@
   "content_scripts": [
     {
       "matches": ["https://leetcode.com/problems/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
+      "js": ["page-bridge.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["lib/marked.min.js", "lib/purify.min.js", "timer.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }
-

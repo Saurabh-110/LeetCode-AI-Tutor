@@ -1,12 +1,35 @@
+# Claude app working folder (not part of the project)
+Claude outputs/
+
+# Secrets (never commit)
+.env
+.env.*
+!.env.example
+
 # Python
 venv/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+dist/
+build/
 
-# Environment files
-.env
+# Node
+node_modules/
 
 # IDE and OS files
 .idea/
 .vscode/
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Docker
+docker-compose.override.yml

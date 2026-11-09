@@ -1,118 +1,191 @@
-/* General Body Styles */
+:root {
+  --bg: #1e1e1e;
+  --card: #262628;
+  --border: #3a3a3d;
+  --text: #d8d8d8;
+  --muted: #8f8f95;
+  --accent: #007acc;
+}
+
 body {
-  width: 300px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
+  width: 340px;
   margin: 0;
-  padding: 10px;
+  padding: 12px;
+  box-sizing: border-box;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
-.container {
-  padding: 15px;
-}
-
-.header {
-  text-align: center;
-  border-bottom: 1px solid #444;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-}
-
-.header h1 {
-  font-size: 18px;
-  margin: 0;
+header h1 {
+  margin: 0 0 10px;
+  font-size: 17px;
   color: #fff;
 }
 
-.setting-item {
+h2 {
+  margin: 0;
+  font-size: 13px;
+  color: #fff;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin: 6px 0;
 }
 
-.setting-label {
-  font-size: 14px;
+.status-title {
+  font-weight: 600;
+  color: #fff;
 }
 
-/* Dropdown Select Menu Styles */
-#timer-select {
-  background-color: #3c3c3c;
-  color: #d4d4d4;
+.status-line,
+.hint,
+.meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hint {
+  margin: 8px 0 0;
+}
+
+select,
+input[type="number"] {
+  background: #3c3c3c;
+  color: var(--text);
   border: 1px solid #555;
   border-radius: 4px;
-  padding: 5px 8px;
-  font-size: 14px;
+  padding: 4px 6px;
+  font-size: 13px;
 }
 
-#timer-select:focus {
-  outline: none;
-  border-color: #007acc;
+input[type="number"] {
+  width: 70px;
 }
 
-/* --- New Toggle Switch Styles --- */
+select:focus,
+input:focus,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 
-/* The switch - a container for the toggle */
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+#reset-btn {
+  margin-top: 8px;
+  background: #3c3c3c;
+  color: var(--text);
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+#reset-btn:hover {
+  background: #4a4a4d;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.history {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.history a {
+  color: var(--text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.meta {
+  white-space: nowrap;
+}
+
+/* Toggle switch */
 .switch {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 28px;
+  width: 42px;
+  height: 24px;
 }
 
-/* Hide the default HTML checkbox */
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-/* The slider is the background of the toggle */
 .slider {
   position: absolute;
+  inset: 0;
+  background: #555;
+  border-radius: 24px;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #555;
-  /* Off state color */
-  -webkit-transition: .4s;
-  transition: .4s;
+  transition: background 0.2s;
 }
 
-/* The little circle that moves */
-.slider:before {
-  position: absolute;
+.slider::before {
   content: "";
-  height: 20px;
-  width: 20px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
-
-/* When the checkbox is checked, change the background color */
-input:checked+.slider {
-  background-color: #007acc;
-  /* On state color */
-}
-
-/* When the checkbox is checked, move the circle */
-input:checked+.slider:before {
-  -webkit-transform: translateX(22px);
-  -ms-transform: translateX(22px);
-  transform: translateX(22px);
-}
-
-/* Rounded sliders */
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
   border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+input:checked + .slider {
+  background: var(--accent);
+}
+
+input:checked + .slider::before {
+  transform: translateX(18px);
+}
+
+input:focus-visible + .slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

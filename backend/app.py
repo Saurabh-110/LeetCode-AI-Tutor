@@ -1,104 +1,162 @@
-import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import google.generativeai as genai
-from dotenv import load_dotenv
-import logging
+"""LeetCode AI Tutor backend.
 
-# --- Initialization ---
+Flask API that turns a problem, the student's code, and a mode (hint, debug, ...)
+into a tutoring reply from Gemini. The API key never leaves this process.
+"""
+
+import logging
+import os
+
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+from llm import GeminiClient, LLMError
+from prompts import MODES, build_system_instruction, build_user_turn, strip_code_blocks
+
 load_dotenv()
 
-app = Flask(__name__)
-# Enable CORS for all domains on all routes
-CORS(app)
+log = logging.getLogger("leetcode-tutor")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+MAX_BODY_BYTES = 200 * 1024
+LIMITS = {
+    "title": 300,
+    "description": 12000,
+    "code": 20000,
+    "message": 2000,
+    "language": 40,
+    "history_turns": 20,
+}
 
-# --- Gemini API Configuration ---
-try:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key == "YOUR_NEW_API_KEY_HERE":
-        logging.error("GEMINI_API_KEY not found or is a placeholder in .env file.")
-    else:
-        genai.configure(api_key=api_key)
-except Exception as e:
-    logging.error(f"Error configuring Gemini API: {e}")
 
-# --- API Endpoint ---
-@app.route('/get-hint', methods=['POST'])
-def get_hint():
-    """
-    Endpoint to get a conceptual hint for a LeetCode problem.
-    """
-    # 1. Check for API Key at the time of request
-    if not api_key or api_key == "YOUR_NEW_API_KEY_HERE":
-        logging.error("API call failed: GEMINI_API_KEY is not configured.")
-        return jsonify({"error": "The server's API key is missing or invalid. Please check the backend configuration."}), 500
+class ValidationError(ValueError):
+    pass
 
-    # 2. Validate Request Data
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid request: No JSON payload received."}), 400
-        
-        problem_title = data.get('problem_title')
-        problem_description = data.get('problem_description')
-        chat_history = data.get('chat_history', [])
 
-        if not all([problem_title, problem_description]):
-            return jsonify({"error": "Invalid request: 'problem_title' and 'problem_description' are required."}), 400
+def _text(data: dict, key: str, limit: int, required: bool = False) -> str:
+    value = data.get(key, "")
+    if value is None:
+        value = ""
+    if not isinstance(value, str):
+        raise ValidationError(f"'{key}' must be a string.")
+    value = value.strip()
+    if required and not value:
+        raise ValidationError(f"'{key}' is required.")
+    return value[:limit]
 
-    except Exception as e:
-        logging.error(f"Error parsing request JSON: {e}")
-        return jsonify({"error": "Invalid request: Could not parse JSON payload."}), 400
 
-    # 3. Construct the Prompt for Gemini
-    try:
-        system_instruction = (
-            "You are an expert programming tutor specializing in LeetCode problems. "
-            "Your goal is to guide the user towards the solution without giving it away. "
-            "You must not provide any code snippets, complete functions, or direct implementation details. "
-            "Focus on high-level concepts, data structures, algorithms, and thought processes."
+def parse_request(data) -> dict:
+    """Validate and normalise the JSON body. Raises ValidationError."""
+    if not isinstance(data, dict):
+        raise ValidationError("Request body must be a JSON object.")
+
+    mode = data.get("mode", "hint")
+    if mode not in MODES:
+        raise ValidationError(f"'mode' must be one of: {', '.join(MODES)}.")
+
+    level = data.get("hint_level", 1)
+    if not isinstance(level, int) or isinstance(level, bool) or not 1 <= level <= 3:
+        raise ValidationError("'hint_level' must be an integer from 1 to 3.")
+
+    history = data.get("chat_history", [])
+    if not isinstance(history, list):
+        raise ValidationError("'chat_history' must be a list.")
+    clean_history = []
+    for turn in history[-LIMITS["history_turns"]:]:
+        if (
+            not isinstance(turn, dict)
+            or turn.get("role") not in ("user", "model")
+            or not isinstance(turn.get("text"), str)
+        ):
+            raise ValidationError("Each chat_history item needs role ('user'|'model') and text.")
+        clean_history.append({"role": turn["role"], "text": turn["text"][: LIMITS["message"] * 3]})
+
+    message = _text(data, "message", LIMITS["message"])
+    if mode == "chat" and not message:
+        raise ValidationError("'message' is required in chat mode.")
+
+    return {
+        "title": _text(data, "problem_title", LIMITS["title"], required=True),
+        "description": _text(data, "problem_description", LIMITS["description"], required=True),
+        "code": _text(data, "user_code", LIMITS["code"]),
+        "language": _text(data, "language", LIMITS["language"]),
+        "mode": mode,
+        "hint_level": level,
+        "message": message,
+        "history": clean_history,
+    }
+
+
+def create_app(llm=None) -> Flask:
+    """App factory. Pass `llm` (anything with .generate) to inject a fake in tests."""
+    app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = MAX_BODY_BYTES
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    configured = bool(api_key) and api_key != "YOUR_API_KEY_HERE"
+    if llm is None and configured:
+        llm = GeminiClient(api_key, os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"))
+    if llm is None:
+        log.error("GEMINI_API_KEY is missing or a placeholder; /get-hint will return 500.")
+
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=[os.getenv("RATE_LIMIT_DEFAULT", "60 per minute")],
+        storage_uri="memory://",
+    )
+
+    @app.after_request
+    def security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.get("/health")
+    def health():
+        return jsonify({"status": "ok", "api_configured": llm is not None})
+
+    @app.errorhandler(413)
+    def too_large(_):
+        return jsonify({"error": "Request payload too large."}), 413
+
+    @app.post("/get-hint")
+    @limiter.limit(os.getenv("RATE_LIMIT_HINT", "30 per minute"))
+    def get_hint():
+        if llm is None:
+            return jsonify({"error": "The server's API key is missing. Check backend/.env."}), 500
+
+        data = request.get_json(silent=True)
+        try:
+            req = parse_request(data)
+        except ValidationError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        system = build_system_instruction(req["title"], req["description"])
+        turn = build_user_turn(
+            req["mode"], req["hint_level"], req["message"], req["code"], req["language"]
         )
-        
-        model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
-            system_instruction=system_instruction
-        )
+        turns = req["history"] + [{"role": "user", "text": turn}]
 
-        model_conversation = []
-        model_conversation.append({
-            "role": "user",
-            "parts": [f"Here is the LeetCode problem I'm working on:\n\nTITLE: {problem_title}\n\nDESCRIPTION: {problem_description}"]
-        })
-        model_conversation.append({"role": "model", "parts": ["Understood. I'm ready to help you think through this problem. What's on your mind?"]})
+        log.info("mode=%s level=%s problem=%s", req["mode"], req["hint_level"], req["title"][:60])
+        try:
+            reply = llm.generate(system, turns)
+        except LLMError as exc:
+            log.warning("LLM failure (%s): %s", exc.status, exc.message)
+            return jsonify({"error": exc.message}), exc.status
+        except Exception:  # never leak internals
+            log.exception("Unexpected error generating reply")
+            return jsonify({"error": "Unexpected server error. Please try again."}), 500
 
-        if chat_history:
-            model_conversation.extend(chat_history)
-        
-        if not chat_history:
-            final_prompt = "I'm feeling a bit stuck. Can you give me a high-level, conceptual first hint to get me started? Remember, please don't provide any code."
-        else:
-            # **FIXED**: Correctly access the 'text' field from the last user message.
-            final_prompt = chat_history[-1]['parts'][0]['text']
+        return jsonify({"hint": strip_code_blocks(reply, req["mode"]), "mode": req["mode"]})
 
-        logging.info(f"Generating hint for: {problem_title}")
-        
-        chat = model.start_chat(history=model_conversation)
-        response = chat.send_message(final_prompt)
-        
-        # 4. Return the Response
-        return jsonify({"hint": response.text})
+    return app
 
-    except Exception as e:
-        logging.error(f"An error occurred while generating a hint: {e}")
-        error_message = str(e)
-        if "API_KEY_INVALID" in error_message:
-             return jsonify({"error": "The provided Gemini API Key is invalid."}), 500
-        return jsonify({"error": f"An unexpected error occurred on the server: {error_message}"}), 500
 
-# --- Main Execution ---
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+app = create_app()
 
+if __name__ == "__main__":
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="127.0.0.1", port=int(os.getenv("PORT", "5000")), debug=debug)

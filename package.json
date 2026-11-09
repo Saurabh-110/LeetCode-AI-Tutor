@@ -1,0 +1,12 @@
+{
+  "name": "leetcode-ai-tutor",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Test runner for the LeetCode AI Tutor extension (no runtime dependencies).",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}
