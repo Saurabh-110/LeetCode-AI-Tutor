@@ -4,6 +4,10 @@ A Chrome extension that tutors you through LeetCode problems **hint-first**. It 
 
 > Not affiliated with LeetCode. Your problem text, code, and chat messages are sent to Google's Gemini API through your own local backend (see [Privacy](#privacy)).
 
+## Demo
+<img width="1910" height="1022" alt="image" src="https://github.com/user-attachments/assets/ebee8fd3-d92e-49e7-a4eb-eb435f6b4a23" />
+
+
 ## Features
 
 - **Progressive hints.** Level 1 is a nudge, level 2 names the technique, level 3 outlines the steps in plain English. No code at any level.
